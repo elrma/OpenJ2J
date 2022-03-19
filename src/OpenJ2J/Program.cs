@@ -4,7 +4,6 @@ using OpenJ2J.J2J;
 using OpenJ2J.J2J.Abstractions;
 using OpenJ2J.J2J.IO;
 using OpenJ2J.J2J.V3;
-using OpenJ2J.Signature;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -19,25 +18,34 @@ namespace OpenJ2J
     public class Options
     {
         // Variables
-        [Option('i', "input", Required = true, HelpText = "Set output to verbose messages.")]
+        [Option('i', "input", Required = true, HelpText = "Sets the path to the input file.")]
         public string? Input { get; set; }
 
-        [Option('o', "output", Required = false, HelpText = "Set output to verbose messages.")]
+        [Option('o', "output", Required = false, HelpText = "Sets the path to the output file.")]
         public string? Output { get; set; }
 
-        [Option('p', "password", Required = false, HelpText = "Set output to verbose messages.")]
+        [Option('p', "password", Required = false, HelpText = "Sets a password of a J2J file.")]
         public string? Password { get; set; }
+
+        [Option('n', "method-number", Required = false, HelpText = "Sets a method which is used by modulator(1, 2, 3).", Default = 3)]
+        public int MethodNumber { get; set; }
+
+        [Option('f', "use-forcer", Required = false, HelpText = "Sets whether to force the file to be recovered.", Default = false)]
+        public bool UseForcer { get; set; }
 
         // Modes
 
-        [Option('v', "validate", Required = false, HelpText = "Set output to verbose messages.")]
-        public bool Validate { get; set; }
+        [Option('s', "version-select", Required = false, HelpText = "Checks the version of a J2J file.")]
+        public bool IsVersionSelectMode { get; set; }
 
-        [Option('m', "modulate", Required = false, HelpText = "Set output to verbose messages.")]
-        public bool Modulate { get; set; }
+        [Option('v', "validate", Required = false, HelpText = "Validates a J2J file.")]
+        public bool IsValidateMode { get; set; }
 
-        [Option('d', "demodulate", Required = false, HelpText = "Set output to verbose messages.")]
-        public bool Demodulate { get; set; }
+        [Option('m', "modulate", Required = false, HelpText = "Modulates a file with J2J format.")]
+        public bool IsModulateMode { get; set; }
+
+        [Option('d', "demodulate", Required = false, HelpText = "Demodulates a J2J file.")]
+        public bool IsDemodulateMode { get; set; }
     }
 
     public class Program
@@ -69,7 +77,7 @@ namespace OpenJ2J
                 {
                     bool isModeSelected = false;
 
-                    if (o.Validate)
+                    if (o.IsVersionSelectMode)
                     {
                         isModeSelected = true;
 
@@ -93,7 +101,31 @@ namespace OpenJ2J
                         }
                     }
 
-                    if (o.Modulate)
+                    if (o.IsValidateMode)
+                    {
+                        isModeSelected = true;
+
+                        try
+                        {
+                            using (J2JValidator validator = new V3Validator(J2JFileStream.Open(o.Input ?? string.Empty)))
+                            {
+                                _stopwatch.Restart();
+
+                                bool result = validator.Validate();
+
+                                _stopwatch.Stop();
+
+                                Log.Information($"Validating...OK.({_stopwatch.ElapsedMilliseconds}ms)");
+                                Log.Information($"J2J Validation Result : {result}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, $"Validating...FAILURE.({_stopwatch.ElapsedMilliseconds}ms)");
+                        }
+                    }
+
+                    if (o.IsModulateMode)
                     {
                         isModeSelected = true;
 
@@ -127,7 +159,7 @@ namespace OpenJ2J
                         }
                     }
 
-                    if (o.Demodulate)
+                    if (o.IsDemodulateMode)
                     {
                         isModeSelected = true;
 

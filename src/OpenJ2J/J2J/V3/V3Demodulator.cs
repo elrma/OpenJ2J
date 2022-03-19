@@ -1,6 +1,7 @@
 ﻿using Force.Crc32;
 using OpenJ2J.Extensions;
 using OpenJ2J.J2J.Abstractions;
+using OpenJ2J.Security;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -188,10 +189,9 @@ namespace OpenJ2J.J2J.V3
                             outputStream.Write(buffer, 0, bytesRead);
                         }
 
-                        byte[] crcBytes = new byte[0];
                         byte[] block = new byte[_blockSize];
 
-                        Crc32Algorithm crc32 = new Crc32Algorithm();
+                        CRC32 crc32 = new CRC32();
 
                         // Demodulate top blocks.
                         for (int blockNumber = 0; blockNumber < _blockCount; blockNumber++)
@@ -206,7 +206,7 @@ namespace OpenJ2J.J2J.V3
                                 _initializationVector[i] ^= block[i];
                             }
 
-                            crcBytes = crc32.ComputeHash(block);
+                            crc32.MemoryHash(block);
 
                             outputStream.Position = _blockSize * blockNumber;
                             outputStream.Write(block, 0, _blockSize);
@@ -226,12 +226,15 @@ namespace OpenJ2J.J2J.V3
                                 _initializationVector[i] ^= block[i];
                             }
 
-                            crcBytes = crc32.ComputeHash(block);
+                            crc32.MemoryHash(block);
 
                             outputStream.Position = outputStream.Length - (_blockSize * (blockNumber + 1));
                             outputStream.Write(block, 0, _blockSize);
                             outputStream.Flush();
                         }
+
+                        byte[] crcBytes = BitConverter.GetBytes(crc32.Hash);
+                        Array.Reverse(crcBytes); // LE to BE.
 
                         // Writes the signature bytes.
                         Log.Information($"CRC32 is calculated. (HASH : {crcBytes.BytesToHexString()})");

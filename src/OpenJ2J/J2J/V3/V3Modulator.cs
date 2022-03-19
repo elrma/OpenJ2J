@@ -188,7 +188,7 @@ namespace OpenJ2J.J2J.V3
             {
                 if (_fileStream != null)
                 {
-                    Log.Information($"Modulator variables are initialized. (File Size : {_fileSize}Byte, Block Size : {_blockSize}Byte, Block Count : {_blockCount}Blocks)");
+                    Log.Information($"Modulator variables are initialized. (File Size : {_fileSize}Byte, Block Size : {_blockSize}Byte, Block Count : {_blockCount*2}Blocks)");
 
                     // Initializes the IV.
                     _initializationVector = GetIV(password);
@@ -210,8 +210,7 @@ namespace OpenJ2J.J2J.V3
 
                         byte[] block = new byte[_blockSize];
 
-                        CRC32 crc32 = new CRC32(0x69746974);
-                        byte[] crcBytes = new byte[0];
+                        CRC32 crc32 = new CRC32();
 
                         // Modulate top blocks.
                         for (int blockNumber = 0; blockNumber < _blockCount; blockNumber++)
@@ -219,7 +218,7 @@ namespace OpenJ2J.J2J.V3
                             outputStream.Position = _blockSize * blockNumber;
                             outputStream.Read(block, 0, _blockSize);
 
-                            crcBytes = crc32.ComputeHash(block);
+                            crc32.MemoryHash(block);
 
                             for (int i = 0; i < _blockSize; i++)
                             {
@@ -227,8 +226,6 @@ namespace OpenJ2J.J2J.V3
                                 block[i] ^= _initializationVector[i];
                                 _initializationVector[i] = block[i];
                             }
-
-                            //crcBytes = crc32.ComputeHash(_initializationVector);
 
                             outputStream.Position = _blockSize * blockNumber;
                             outputStream.Write(_initializationVector, 0, _blockSize);
@@ -241,7 +238,7 @@ namespace OpenJ2J.J2J.V3
                             outputStream.Position = outputStream.Length - 32 - (_blockSize * (blockNumber + 1));
                             outputStream.Read(block, 0, _blockSize);
 
-                            crcBytes = crc32.ComputeHash(block);
+                            crc32.MemoryHash(block);
 
                             for (int i = 0; i < _blockSize; i++)
                             {
@@ -250,12 +247,13 @@ namespace OpenJ2J.J2J.V3
                                 _initializationVector[i] = block[i];
                             }
 
-                            //crcBytes = crc32.ComputeHash(_initializationVector);
-
                             outputStream.Position = outputStream.Length - 32 - (_blockSize * (blockNumber + 1));
                             outputStream.Write(_initializationVector, 0, _blockSize);
                             outputStream.Flush();
                         }
+
+                        byte[] crcBytes = BitConverter.GetBytes(crc32.Hash);
+                        Array.Reverse(crcBytes); // LE to BE.
 
                         // Writes the signature bytes.
                         Log.Information($"CRC32 is calculated. (HASH : {crcBytes.BytesToHexString()})");

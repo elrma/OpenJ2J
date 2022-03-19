@@ -8,71 +8,66 @@ namespace OpenJ2J.Security
 {
     public class CRC32
     {
-        private uint[] _checksumTable;
-        private uint _polynomial;
+        private uint[] _crc32Table = new uint[256];
+        private uint _polynomial = 0xEDB88320; // CRC32 Polynomial
+
+        private uint _hash = 0xFFFFFFFF;
+
+        public uint Hash
+        {
+            get => _hash;
+        }
 
         public CRC32()
         {
+            Initialize();
+        }
+
+        public void Initialize()
+        {
+            _crc32Table = new uint[256];
             _polynomial = 0xEDB88320;
+            _hash = 0xFFFFFFFF;
 
-            _checksumTable = new uint[0x100];
+            uint crc32;
 
-            for (uint index = 0; index < 0x100; ++index)
+            for (int i=0; i<256; i++)
             {
-                uint item = index;
-                for (int bit = 0; bit < 8; ++bit)
-                    item = ((item & 1) != 0) ? (_polynomial ^ (item >> 1)) : (item >> 1);
-                _checksumTable[index] = item;
+                crc32 = (uint)i;
+
+                for (int j=8; j>0; j--)
+                {
+                    if ((crc32 & 1) == 1)
+                    {
+                        crc32 = (crc32 >> 1) ^ _polynomial;
+                    }
+                    else
+                    {
+                        crc32 >>= 1;
+                    }
+                }
+                _crc32Table[i] = crc32;
             }
         }
 
-        public CRC32(uint polynomial)
+        private void ComputeHash(byte buffer, ref uint crc32)
         {
-            _polynomial = polynomial;
+            crc32 = ((crc32) >> 8) ^ _crc32Table[buffer ^ (crc32 & 0x000000FF)];
+        }
 
-            _checksumTable = new uint[0x100];
-
-            for (uint index = 0; index < 0x100; ++index)
+        public void MemoryHash(byte[] buffer)
+        {
+            if (_crc32Table == null)
             {
-                uint item = index;
-                for (int bit = 0; bit < 8; ++bit)
-                    item = ((item & 1) != 0) ? (_polynomial ^ (item >> 1)) : (item >> 1);
-                _checksumTable[index] = item;
+                throw new InvalidOperationException("The CRC32 table does not initialized.");
             }
-        }
 
-        public void Initialize(uint polynomial)
-        {
-            _polynomial = polynomial;
-
-            _checksumTable = new uint[0x100];
-
-            for (uint index = 0; index < 0x100; ++index)
-            {
-                uint item = index;
-                for (int bit = 0; bit < 8; ++bit)
-                    item = ((item & 1) != 0) ? (_polynomial ^ (item >> 1)) : (item >> 1);
-                _checksumTable[index] = item;
+            for (int i=0; i<buffer.Length; i++)
+            { 
+                ComputeHash(buffer[i], ref _hash);
             }
-        }
 
-        public byte[] ComputeHash(Stream stream)
-        {
-            uint result = 0xFFFFFFFF; // CRC32 Seed(Default Value)
-
-            int current;
-            while ((current = stream.ReadByte()) != -1)
-                result = _checksumTable[(result & 0xFF) ^ (byte)current] ^ (result >> 8);
-
-            byte[] hash = BitConverter.GetBytes(~result);
-            Array.Reverse(hash);
-            return hash;
-        }
-
-        public byte[] ComputeHash(byte[] data)
-        {
-            using (MemoryStream stream = new MemoryStream(data))
-                return ComputeHash(stream);
+            _hash = ~(_hash);
         }
     }
 }

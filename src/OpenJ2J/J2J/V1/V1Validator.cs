@@ -7,9 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenJ2J.J2J.V3
+namespace OpenJ2J.J2J.V1
 {
-    public class V3Validator : J2JValidator
+    public class V1Validator : J2JValidator
     {
         #region ::Variables::
 
@@ -22,7 +22,7 @@ namespace OpenJ2J.J2J.V3
 
         #region ::Constructors::
 
-        public V3Validator(FileStream fileStream) : base(fileStream)
+        public V1Validator(FileStream fileStream) : base(fileStream)
         {
             _fileStream = fileStream;
         }

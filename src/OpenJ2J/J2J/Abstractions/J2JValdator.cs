@@ -33,13 +33,9 @@ namespace OpenJ2J.J2J.Abstractions
 
         public abstract bool Validate();
 
-        public abstract bool ValidateWithCRC();
+        public abstract bool ValidateWithChecksum();
 
-        public virtual bool ValidateWithExtension()
-        {
-            return true;
-        }
-
+        public abstract bool ValidateWithChecksum(string password);
 
         #endregion
 

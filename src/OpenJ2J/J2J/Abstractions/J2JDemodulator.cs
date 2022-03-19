@@ -18,6 +18,13 @@ namespace OpenJ2J.J2J.Abstractions
             set => _fileStream = value;
         }
 
+        protected byte[]? _checksum = null;
+
+        public byte[]? Checksum
+        {
+            get => _checksum;
+        }
+
         #endregion
 
         #region ::Constructors::
