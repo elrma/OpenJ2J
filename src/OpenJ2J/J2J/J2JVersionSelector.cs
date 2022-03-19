@@ -12,35 +12,31 @@ namespace OpenJ2J.J2J
 {
     public static class J2JVersionSelector
     {
-        public static J2JMethod SelectVersion(FileStream fileStream)
+        public static J2JVersion SelectVersion(FileStream fileStream)
         {
-            J2JMethod method = J2JMethod.Unknown;
+            J2JVersion method = J2JVersion.Unknown;
 
-            using (J2JValidator validator = new V1Validator(fileStream))
+            J2JValidator validator;
+
+            validator = new V1Validator(fileStream);
+            if (validator.Validate())
             {
-                if (validator.Validate())
-                {
-                    method = J2JMethod.Method1;
-                    return method;
-                }
+                method = J2JVersion.Method1;
+                return method;
             }
 
-            using (J2JValidator validator = new V2Validator(fileStream))
+            validator = new V2Validator(fileStream);
+            if (validator.Validate())
             {
-                if (validator.Validate())
-                {
-                    method = J2JMethod.Method2;
-                    return method;
-                }
+                method = J2JVersion.Method2;
+                return method;
             }
 
-            using (J2JValidator validator = new V3Validator(fileStream))
+            validator = new V3Validator(fileStream);
+            if (validator.Validate())
             {
-                if (validator.Validate())
-                {
-                    method = J2JMethod.Method3;
-                    return method;
-                }
+                method = J2JVersion.Method3;
+                return method;
             }
 
             return method;

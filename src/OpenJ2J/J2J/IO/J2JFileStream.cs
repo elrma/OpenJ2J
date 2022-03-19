@@ -19,7 +19,7 @@ namespace OpenJ2J.J2J.IO
                 throw new FileNotFoundException($"The file does not exist. (PATH : {filePath})");
             }
 
-            return new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite);
+            return new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
         }
     }
 }

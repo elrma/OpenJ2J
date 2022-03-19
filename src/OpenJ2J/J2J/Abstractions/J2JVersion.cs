@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace OpenJ2J.J2J.Abstractions
 {
-    public enum J2JMethod
+    public enum J2JVersion
     {
         Unknown,
         Method1,

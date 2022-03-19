@@ -27,8 +27,8 @@ namespace OpenJ2J
         [Option('p', "password", Required = false, HelpText = "Sets a password of a J2J file.")]
         public string? Password { get; set; }
 
-        [Option('n', "method-number", Required = false, HelpText = "Sets a method which is used by modulator(1, 2, 3).", Default = 3)]
-        public int MethodNumber { get; set; }
+        [Option('n', "version-number", Required = false, HelpText = "Sets a method which is used by modulator(1, 2, 3).", Default = 3)]
+        public int VersionNumber { get; set; }
 
         [Option('f', "use-forcer", Required = false, HelpText = "Sets whether to force the file to be recovered.", Default = false)]
         public bool UseForcer { get; set; }
@@ -83,21 +83,22 @@ namespace OpenJ2J
 
                         try
                         {
-                            using (J2JValidator validator = new V3Validator(J2JFileStream.Open(o.Input ?? string.Empty)))
+                            using (FileStream stream = J2JFileStream.Open(o.Input ?? string.Empty))
                             {
                                 _stopwatch.Restart();
 
-                                bool result = validator.Validate();
+                                J2JVersion version = J2JVersionSelector.SelectVersion(stream);
 
                                 _stopwatch.Stop();
 
-                                Log.Information($"Validating...OK.({_stopwatch.ElapsedMilliseconds}ms)");
-                                Log.Information($"J2J Validation Result : {result}");
+                                Log.Information($"J2J Version is selected. (Version : {version})");
+
+                                Log.Information($"Selecting...OK.({_stopwatch.ElapsedMilliseconds}ms)");
                             }
                         }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, $"Validating...FAILURE.({_stopwatch.ElapsedMilliseconds}ms)");
+                            Log.Error(ex, $"Selecting...FAILURE.({_stopwatch.ElapsedMilliseconds}ms)");
                         }
                     }
 

@@ -14,9 +14,9 @@ namespace OpenJ2J.J2J.V2
         #region ::Variables::
 
         /// <summary>
-        /// The J2J Format Signature. (L3000009)
+        /// The J2J Format Signature. (L2)
         /// </summary>
-        private static string J2J_SIGNATURE = "4C33303030303039";
+        private static string J2J_SIGNATURE = "4C32";
 
         #endregion
 
@@ -35,7 +35,7 @@ namespace OpenJ2J.J2J.V2
         {
             try
             {
-                byte[] buffer = new byte[8];
+                byte[] buffer = new byte[2];
 
                 if (_fileStream != null)
                 {
@@ -47,9 +47,9 @@ namespace OpenJ2J.J2J.V2
                     // Read the J2J signature section of the file.
                     long position = _fileStream.Length - 8;
                     _fileStream.Position = position;
-                    _fileStream.Read(buffer, 0, 8);
+                    _fileStream.Read(buffer, 0, 2);
 
-                    Log.Information($"Original signature is '{J2J_SIGNATURE}', target's is '{buffer.BytesToHexString()}'.");
+                    Log.Information($"The signature is catched. (Original Signature : {J2J_SIGNATURE}, Catched Signature : {buffer.BytesToHexString()})");
 
                     // Convert the J2J_SIGNATURE to a byte array.
                     byte[] signatureBytes = J2J_SIGNATURE.HexToBytes();
