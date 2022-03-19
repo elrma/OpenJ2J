@@ -111,12 +111,24 @@ namespace OpenJ2J
                             {
                                 _stopwatch.Restart();
 
-                                bool result = validator.Validate();
+                                bool validationResult = validator.Validate();
+
+                                bool checksumValidationResult = false;
+
+                                if (string.IsNullOrEmpty(o.Password))
+                                {
+                                    checksumValidationResult = validator.ValidateWithChecksum();
+                                }
+                                else
+                                {
+                                    checksumValidationResult = validator.ValidateWithChecksum(o.Password);
+                                }
 
                                 _stopwatch.Stop();
 
+                                Log.Information($"Signature Validity : {validationResult}");
+                                Log.Information($"CRC32 Checksum Validity : {checksumValidationResult}");
                                 Log.Information($"Validating...OK.({_stopwatch.ElapsedMilliseconds}ms)");
-                                Log.Information($"J2J Validation Result : {result}");
                             }
                         }
                         catch (Exception ex)

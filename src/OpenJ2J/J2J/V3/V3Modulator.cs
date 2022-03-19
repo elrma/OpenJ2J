@@ -1,5 +1,4 @@
-﻿using Force.Crc32;
-using OpenJ2J.Extensions;
+﻿using OpenJ2J.Extensions;
 using OpenJ2J.J2J.Abstractions;
 using OpenJ2J.Security;
 using Serilog;
@@ -94,89 +93,6 @@ namespace OpenJ2J.J2J.V3
 
         #region ::Methods::
 
-        public byte[] GetIV(string? password = null)
-        {
-            byte[] iv = new byte[_blockSize];
-
-            if (string.IsNullOrEmpty(password))
-            {
-                // Fill the IV array.
-                byte currentByte = 0;
-
-                for (int i=0; i< iv.Length; i++)
-                {
-                    if (currentByte > 255)
-                    {
-                        currentByte = 0;
-                    }
-
-                    iv[i] = currentByte++;
-                }
-
-                return iv;
-            }
-            else
-            {
-                iv = GetIV(null); // Get a defualt IV.
-
-                byte[] passwordBytes = Encoding.UTF8.GetBytes(password); // Convert the password to UTF-8 bytes.
-
-                // Obfuscate the IV.
-                bool skip = false;
-                int skipCount = 0;
-                int currentIndex = 0;
-                for (long i = 0; i < iv.LongLength; i++)
-                {
-                    if (skip)
-                    {
-                        skip = false;
-                        skipCount++;
-                        continue;
-                    }
-
-                    if (skipCount >= passwordBytes.Length)
-                    {
-                        skipCount = 0;
-                        i += 1;
-                    }
-
-                    skip = true;
-
-                    iv[i] += passwordBytes[currentIndex++];
-
-                    if (currentIndex >= passwordBytes.Length)
-                    {
-                        currentIndex = 0;
-                    }
-                }
-
-                return iv;
-            }
-        }
-
-        private byte[] GetSignature(byte BlockCount, byte[] crc)
-        {
-            byte[] signature = new byte[32];
-
-            // Fill blanks.
-            byte[] blank = Enumerable.Repeat<byte>(0, 8).ToArray();
-            blank.CopyTo(signature, 0);
-            blank.CopyTo(signature, 9);
-
-            // Fill the block size section.
-            signature[8] = BlockCount;
-
-            // Fill the CRC sector.
-            crc.CopyTo(signature, 16);
-
-            // Fill the last sector.
-            string lastString = "4C33303030303039";
-            byte[] lastBytes = lastString.HexToBytes();
-            lastBytes.CopyTo(signature, 24);
-
-            return signature;
-        }
-
         public override bool Modulate(string outputPath)
         {
             return Modulate(outputPath, string.Empty);
@@ -191,7 +107,7 @@ namespace OpenJ2J.J2J.V3
                     Log.Information($"Modulator variables are initialized. (File Size : {_fileSize}Byte, Block Size : {_blockSize}Byte, Block Count : {_blockCount*2}Blocks)");
 
                     // Initializes the IV.
-                    _initializationVector = GetIV(password);
+                    _initializationVector = VariableBuilder.GetIV(_blockSize, password);
                     string ivString = string.IsNullOrEmpty(password) ? "loop of 0x00~0xFF" : $"obfuscated by {password}";
                     Log.Information($"Initialization Vector is initialized. (IV : {ivString})");
 
@@ -261,7 +177,7 @@ namespace OpenJ2J.J2J.V3
                         // Bytes to UTF-8 Padding.
                         crcBytes = Encoding.UTF8.GetBytes(crcBytes.BytesToHexString());
 
-                        byte[] signatureBytes = GetSignature(_blockCount, crcBytes);
+                        byte[] signatureBytes = VariableBuilder.GetSignature(_blockCount, crcBytes);
                         outputStream.Position = outputStream.Length - 32;
                         outputStream.Write(signatureBytes, 0, 32);
                         outputStream.Flush();
