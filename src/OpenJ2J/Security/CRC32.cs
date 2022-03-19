@@ -8,46 +8,61 @@ namespace OpenJ2J.Security
 {
     public class CRC32
     {
-        private readonly uint[] ChecksumTable;
-        private readonly uint Polynomial;
+        private uint[] _checksumTable;
+        private uint _polynomial;
 
         public CRC32()
         {
-            Polynomial = 0xEDB88320;
+            _polynomial = 0xEDB88320;
 
-            ChecksumTable = new uint[0x100];
+            _checksumTable = new uint[0x100];
 
             for (uint index = 0; index < 0x100; ++index)
             {
                 uint item = index;
                 for (int bit = 0; bit < 8; ++bit)
-                    item = ((item & 1) != 0) ? (Polynomial ^ (item >> 1)) : (item >> 1);
-                ChecksumTable[index] = item;
+                    item = ((item & 1) != 0) ? (_polynomial ^ (item >> 1)) : (item >> 1);
+                _checksumTable[index] = item;
             }
         }
 
         public CRC32(uint polynomial)
         {
-            Polynomial = polynomial;
+            _polynomial = polynomial;
 
-            ChecksumTable = new uint[0x100];
+            _checksumTable = new uint[0x100];
 
             for (uint index = 0; index < 0x100; ++index)
             {
                 uint item = index;
                 for (int bit = 0; bit < 8; ++bit)
-                    item = ((item & 1) != 0) ? (Polynomial ^ (item >> 1)) : (item >> 1);
-                ChecksumTable[index] = item;
+                    item = ((item & 1) != 0) ? (_polynomial ^ (item >> 1)) : (item >> 1);
+                _checksumTable[index] = item;
+            }
+        }
+
+        public void Initialize(uint polynomial)
+        {
+            _polynomial = polynomial;
+
+            _checksumTable = new uint[0x100];
+
+            for (uint index = 0; index < 0x100; ++index)
+            {
+                uint item = index;
+                for (int bit = 0; bit < 8; ++bit)
+                    item = ((item & 1) != 0) ? (_polynomial ^ (item >> 1)) : (item >> 1);
+                _checksumTable[index] = item;
             }
         }
 
         public byte[] ComputeHash(Stream stream)
         {
-            uint result = 0xFFFFFFFF;
+            uint result = 0xFFFFFFFF; // CRC32 Seed(Default Value)
 
             int current;
             while ((current = stream.ReadByte()) != -1)
-                result = ChecksumTable[(result & 0xFF) ^ (byte)current] ^ (result >> 8);
+                result = _checksumTable[(result & 0xFF) ^ (byte)current] ^ (result >> 8);
 
             byte[] hash = BitConverter.GetBytes(~result);
             Array.Reverse(hash);
