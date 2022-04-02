@@ -211,61 +211,60 @@ namespace OpenJ2J
                         {
                             _stopwatch.Restart();
 
-                            FileStream stream = J2JFileStream.Open(o.Input ?? string.Empty);
-
-                            // Checks the version of the file.
-                            J2JVersion version = J2JVersionSelector.SelectVersion(stream);
-
-                            bool errorFlag = false;
-
-                            J2JDemodulator? demodulator = null;
-
-                            switch (version)
+                            using (FileStream stream = J2JFileStream.Open(o.Input ?? string.Empty))
                             {
-                                case J2JVersion.Method1:
-                                    demodulator = new V1Demodulator(stream);
-                                    break;
-                                case J2JVersion.Method2:
-                                    demodulator = new V2Demodulator(stream);
-                                    break;
-                                case J2JVersion.Method3:
-                                    demodulator = new V3Demodulator(stream);
-                                    break;
-                                default:
-                                    errorFlag = true;
-                                    break;
+                                // Checks the version of the file.
+                                J2JVersion version = J2JVersionSelector.SelectVersion(stream);
+
+                                bool errorFlag = false;
+
+                                J2JDemodulator? demodulator = null;
+
+                                switch (version)
+                                {
+                                    case J2JVersion.Method1:
+                                        demodulator = new V1Demodulator(stream);
+                                        break;
+                                    case J2JVersion.Method2:
+                                        demodulator = new V2Demodulator(stream);
+                                        break;
+                                    case J2JVersion.Method3:
+                                        demodulator = new V3Demodulator(stream);
+                                        break;
+                                    default:
+                                        errorFlag = true;
+                                        break;
+                                }
+
+                                if (errorFlag)
+                                {
+                                    Log.Warning($"An unavailable version has been selected. (VERSION NUMBER : {version})");
+                                    return;
+                                }
+
+
+                                // Demodulates the file.
+                                Log.Information($"J2J Demodulator is initialized. (VERSION : Method{o.VersionNumber}, INPUT : {o.Input}, OUTPUT : {o.Output ?? "Auto"})");
+                                _stopwatch.Restart();
+
+                                bool? result = false;
+
+                                if (string.IsNullOrEmpty(o.Password))
+                                {
+                                    result = demodulator?.Demodulate(o.Output ?? string.Empty, o.UseForcer);
+                                }
+                                else
+                                {
+                                    result = demodulator?.Demodulate(o.Output ?? string.Empty, o.UseForcer, o.Password);
+                                }
+
+                                demodulator?.Dispose();
+
+                                _stopwatch.Stop();
+
+                                string resultString = result == true ? "OK" : "FAILURE";
+                                Log.Information($"Demodulating...{resultString}.({_stopwatch.ElapsedMilliseconds}ms)");
                             }
-
-                            if (errorFlag)
-                            {
-                                Log.Warning($"An unavailable version has been selected. (VERSION NUMBER : {version})");
-                                return;
-                            }
-
-
-                            // Demodulates the file.
-                            Log.Information($"J2J Demodulator is initialized. (VERSION : Method{o.VersionNumber}, INPUT : {o.Input}, OUTPUT : {o.Output ?? "Auto"})");
-                            _stopwatch.Restart();
-
-                            bool? result = false;
-
-                            if (string.IsNullOrEmpty(o.Password))
-                            {
-                                result = demodulator?.Demodulate(o.Output ?? string.Empty, o.UseForcer);
-                            }
-                            else
-                            {
-                                result = demodulator?.Demodulate(o.Output ?? string.Empty, o.UseForcer, o.Password);
-                            }
-
-                            demodulator?.Dispose();
-
-                            _stopwatch.Stop();
-
-                            string resultString = result == true ? "OK" : "FAILURE";
-                            Log.Information($"Demodulating...{resultString}.({_stopwatch.ElapsedMilliseconds}ms)");
-
-                            _stopwatch.Stop();
                         }
                         catch (Exception ex)
                         {

@@ -58,17 +58,6 @@ namespace OpenJ2J.J2J.V3
             set => _initializationVector = value;
         }
 
-        private byte[] _checksum = new byte[0];
-
-        /// <summary>
-        /// The checksum.
-        /// </summary>
-        public byte[] Checksum
-        {
-            get => _checksum;
-            set => _checksum = value;
-        }
-
         #endregion
 
         #region ::Constructors::
