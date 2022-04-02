@@ -104,7 +104,7 @@ namespace OpenJ2J.J2J.V3
             {
                 if (_fileStream != null)
                 {
-                    Log.Information($"Modulator variables are initialized. (File Size : {_fileSize}Byte, Block Size : {_blockSize}Byte, Block Count : {_blockCount*2}Blocks)");
+                    Log.Information($"Modulator variables are initialized. (File Size : {_fileSize} Bytes, Block Size : {_blockSize} Bytes, Block Count : {_blockCount*2} Blocks)");
 
                     // Initializes the IV.
                     _initializationVector = VariableBuilder.GetIV(_blockSize, password);
@@ -113,20 +113,19 @@ namespace OpenJ2J.J2J.V3
 
                     using (FileStream outputStream = new FileStream(outputPath, FileMode.OpenOrCreate, FileAccess.ReadWrite))
                     {
+                        // Initialize streams.
+                        _fileStream.Position = 0;
+                        outputStream.Position = 0;
+
                         // Copy the file.
+                        _fileStream.CopyTo(outputStream, 2048);
                         outputStream.SetLength(_fileStream.Length + 32); // 32 Bytes => File Signature.
 
-                        byte[] buffer = new byte[2048];
-                        int bytesRead;
-
-                        while ((bytesRead = _fileStream.Read(buffer, 0, buffer.Length)) > 0)
-                        {
-                            outputStream.Write(buffer, 0, bytesRead);
-                        }
-
-                        byte[] block = new byte[_blockSize];
+                        /* -------------------------------------------------- */
 
                         CRC32 crc32 = new CRC32();
+
+                        byte[] block = new byte[_blockSize];
 
                         // Modulate top blocks.
                         for (int blockNumber = 0; blockNumber < _blockCount; blockNumber++)

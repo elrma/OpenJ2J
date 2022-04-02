@@ -58,6 +58,17 @@ namespace OpenJ2J.J2J.V3
             set => _initializationVector = value;
         }
 
+        private byte[] _checksum = new byte[0];
+
+        /// <summary>
+        /// The checksum.
+        /// </summary>
+        public byte[] Checksum
+        {
+            get => _checksum;
+            set => _checksum = value;
+        }
+
         #endregion
 
         #region ::Constructors::
@@ -92,18 +103,28 @@ namespace OpenJ2J.J2J.V3
 
         #region ::Methods::
 
-        public override bool Demodulate(string outputPath)
+        public override bool Demodulate(string outputPath, bool useForcer)
         {
-            return Demodulate(outputPath, string.Empty);
+            return Demodulate(outputPath, useForcer, string.Empty);
         }
 
-        public override bool Demodulate(string outputPath, string password)
+        public override bool Demodulate(string outputPath, bool useForcer, string password)
         {
             try
             {
                 if (_fileStream != null)
                 {
-                    Log.Information($"Demodulator variables are initialized. (File Size : {_fileSize}Byte, Block Size : {_blockSize}Byte, Block Count : {_blockCount*2}Blocks)");
+                    Log.Information($"Demodulator variables are initialized. (File Size : {_fileSize} Bytes, Block Size : {_blockSize} Bytes, Block Count : {_blockCount*2} Blocks)");
+
+                    // Validates the file.
+                    V3Validator validator = new V3Validator(_fileStream);
+                    bool validationResult = validator.ValidateWithChecksum(password);
+
+                    if (!validationResult && !useForcer)
+                    {
+                        Log.Error("The checksum of the file does not match. If you want to force the operation, use the '-f, --use-forcer' option.");
+                        return false;
+                    }
 
                     // Initializes the IV.
                     _initializationVector = VariableBuilder.GetIV(_blockSize, password);
@@ -112,25 +133,17 @@ namespace OpenJ2J.J2J.V3
 
                     using (FileStream outputStream = new FileStream(outputPath, FileMode.OpenOrCreate, FileAccess.ReadWrite))
                     {
+                        // Initialize streams.
+                        _fileStream.Position = 0;
+                        outputStream.Position = 0;
+
                         // Copy the file.
+                        _fileStream.CopyTo(outputStream, 2048);
                         outputStream.SetLength(_fileStream.Length - 32); // 32 Bytes => File Signature.
 
-                        byte[] buffer = new byte[2048];
-                        int bytesRead;
-
-                        while ((bytesRead = _fileStream.Read(buffer, 0, buffer.Length)) > 0)
-                        {
-                            if (bytesRead != buffer.Length)
-                            {
-                                bytesRead = bytesRead - 32;
-                            }
-
-                            outputStream.Write(buffer, 0, bytesRead);
-                        }
+                        /* -------------------------------------------------- */
 
                         byte[] block = new byte[_blockSize];
-
-                        CRC32 crc32 = new CRC32();
 
                         // Demodulate top blocks.
                         for (int blockNumber = 0; blockNumber < _blockCount; blockNumber++)
@@ -144,8 +157,6 @@ namespace OpenJ2J.J2J.V3
                                 block[i] ^= _initializationVector[i];
                                 _initializationVector[i] ^= block[i];
                             }
-
-                            crc32.MemoryHash(block);
 
                             outputStream.Position = _blockSize * blockNumber;
                             outputStream.Write(block, 0, _blockSize);
@@ -165,25 +176,10 @@ namespace OpenJ2J.J2J.V3
                                 _initializationVector[i] ^= block[i];
                             }
 
-                            crc32.MemoryHash(block);
-
                             outputStream.Position = outputStream.Length - (_blockSize * (blockNumber + 1));
                             outputStream.Write(block, 0, _blockSize);
                             outputStream.Flush();
                         }
-
-                        byte[] crcBytes = BitConverter.GetBytes(crc32.Hash);
-                        Array.Reverse(crcBytes); // LE to BE.
-                        _checksum = crcBytes;
-
-                        // Writes the signature bytes.
-                        Log.Information($"CRC32 is calculated. (HASH : {crcBytes.BytesToHexString()})");
-
-                        // Bytes to UTF-8 Padding.
-                        crcBytes = Encoding.UTF8.GetBytes(crcBytes.BytesToHexString());
-
-                        outputStream.Position = outputStream.Length - 32;
-                        outputStream.Flush();
 
                         return true;
                     }

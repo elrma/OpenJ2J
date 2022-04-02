@@ -3,6 +3,8 @@ using OpenJ2J.Extensions;
 using OpenJ2J.J2J;
 using OpenJ2J.J2J.Abstractions;
 using OpenJ2J.J2J.IO;
+using OpenJ2J.J2J.V1;
+using OpenJ2J.J2J.V2;
 using OpenJ2J.J2J.V3;
 using Serilog;
 using Serilog.Events;
@@ -35,17 +37,17 @@ namespace OpenJ2J
 
         // Modes
 
-        [Option('s', "version-select", Required = false, HelpText = "Checks the version of a J2J file.")]
-        public bool IsVersionSelectMode { get; set; }
+        [Option('s', "select-version", Required = false, HelpText = "Checks the version of a J2J file.")]
+        public bool IsVersionSelectorMode { get; set; }
 
         [Option('v', "validate", Required = false, HelpText = "Validates a J2J file.")]
-        public bool IsValidateMode { get; set; }
+        public bool IsValidatorMode { get; set; }
 
         [Option('m', "modulate", Required = false, HelpText = "Modulates a file with J2J format.")]
-        public bool IsModulateMode { get; set; }
+        public bool IsModulatorMode { get; set; }
 
         [Option('d', "demodulate", Required = false, HelpText = "Demodulates a J2J file.")]
-        public bool IsDemodulateMode { get; set; }
+        public bool IsDemodulatorMode { get; set; }
     }
 
     public class Program
@@ -77,16 +79,16 @@ namespace OpenJ2J
                 {
                     bool isModeSelected = false;
 
-                    if (o.IsVersionSelectMode)
+                    if (o.IsVersionSelectorMode)
                     {
                         isModeSelected = true;
 
                         try
                         {
+                            _stopwatch.Restart();
+
                             using (FileStream stream = J2JFileStream.Open(o.Input ?? string.Empty))
                             {
-                                _stopwatch.Restart();
-
                                 J2JVersion version = J2JVersionSelector.SelectVersion(stream);
 
                                 _stopwatch.Stop();
@@ -102,16 +104,17 @@ namespace OpenJ2J
                         }
                     }
 
-                    if (o.IsValidateMode)
+                    if (o.IsValidatorMode)
                     {
                         isModeSelected = true;
 
                         try
                         {
+                            _stopwatch.Restart();
+
+                            Log.Information($"J2J Validator is initialized. (VERSION : Method{o.VersionNumber}, INPUT : {o.Input})");
                             using (J2JValidator validator = new V3Validator(J2JFileStream.Open(o.Input ?? string.Empty)))
                             {
-                                _stopwatch.Restart();
-
                                 bool validationResult = validator.Validate();
 
                                 bool checksumValidationResult = false;
@@ -138,33 +141,61 @@ namespace OpenJ2J
                         }
                     }
 
-                    if (o.IsModulateMode)
+                    if (o.IsModulatorMode)
                     {
                         isModeSelected = true;
 
                         try
                         {
-                            using (J2JModulator modulator = new V3Modulator(J2JFileStream.Open(o.Input ?? string.Empty)))
+                            _stopwatch.Restart();
+
+                            // Sets the version of the file.
+                            bool errorFlag = false;
+
+                            J2JModulator? modulator = null;
+
+                            switch (o.VersionNumber)
                             {
-                                Log.Information($"J2J Modulator is initialized. (INPUT : {o.Input}, OUTPUT : {o.Output})");
-                                _stopwatch.Restart();
-
-                                bool result = false;
-
-                                if (string.IsNullOrEmpty(o.Password))
-                                {
-                                    result = modulator.Modulate(o.Output ?? string.Empty);
-                                }
-                                else
-                                {
-                                    result = modulator.Modulate(o.Output ?? string.Empty, o.Password);
-                                }
-
-                                _stopwatch.Stop();
-
-                                string resultString = result ? "OK" : "FAILURE";
-                                Log.Information($"Modulating...{resultString}.({_stopwatch.ElapsedMilliseconds}ms)");
+                                case 1:
+                                    modulator = new V1Modulator(J2JFileStream.Open(o.Input ?? string.Empty));
+                                    break;
+                                case 2:
+                                    modulator = new V2Modulator(J2JFileStream.Open(o.Input ?? string.Empty));
+                                    break;
+                                case 3:
+                                    modulator = new V3Modulator(J2JFileStream.Open(o.Input ?? string.Empty));
+                                    break;
+                                default:
+                                    errorFlag = true;
+                                    break;
                             }
+
+                            if (errorFlag)
+                            {
+                                Log.Warning($"An unavailable version has been selected. (VERSION NUMBER : {o.VersionNumber})");
+                                return;
+                            }
+
+                            // Modulates the file.
+                            Log.Information($"J2J Modulator is initialized. (VERSION : Method{o.VersionNumber}, INPUT : {o.Input}, OUTPUT : {o.Output ?? "Auto"})");
+
+                            bool? result = false;
+
+                            if (string.IsNullOrEmpty(o.Password))
+                            {
+                                result = modulator?.Modulate(o.Output ?? string.Empty);
+                            }
+                            else
+                            {
+                                result = modulator?.Modulate(o.Output ?? string.Empty, o.Password);
+                            }
+
+                            modulator?.Dispose();
+
+                            _stopwatch.Stop();
+
+                            string resultString = result == true ? "OK" : "FAILURE";
+                            Log.Information($"Modulating...{resultString}.({_stopwatch.ElapsedMilliseconds}ms)");
                         }
                         catch (Exception ex)
                         {
@@ -172,33 +203,69 @@ namespace OpenJ2J
                         }
                     }
 
-                    if (o.IsDemodulateMode)
+                    if (o.IsDemodulatorMode)
                     {
                         isModeSelected = true;
 
                         try
                         {
-                            using (J2JDemodulator modulator = new V3Demodulator(J2JFileStream.Open(o.Input ?? string.Empty)))
+                            _stopwatch.Restart();
+
+                            FileStream stream = J2JFileStream.Open(o.Input ?? string.Empty);
+
+                            // Checks the version of the file.
+                            J2JVersion version = J2JVersionSelector.SelectVersion(stream);
+
+                            bool errorFlag = false;
+
+                            J2JDemodulator? demodulator = null;
+
+                            switch (version)
                             {
-                                Log.Information($"J2J Demodulator is initialized. (INPUT : {o.Input}, OUTPUT : {o.Output})");
-                                _stopwatch.Restart();
-
-                                bool result = false;
-
-                                if (string.IsNullOrEmpty(o.Password))
-                                {
-                                    result = modulator.Demodulate(o.Output ?? string.Empty);
-                                }
-                                else
-                                {
-                                    result = modulator.Demodulate(o.Output ?? string.Empty, o.Password);
-                                }
-
-                                _stopwatch.Stop();
-
-                                string resultString = result ? "OK" : "FAILURE";
-                                Log.Information($"Demodulating...{resultString}.({_stopwatch.ElapsedMilliseconds}ms)");
+                                case J2JVersion.Method1:
+                                    demodulator = new V1Demodulator(stream);
+                                    break;
+                                case J2JVersion.Method2:
+                                    demodulator = new V2Demodulator(stream);
+                                    break;
+                                case J2JVersion.Method3:
+                                    demodulator = new V3Demodulator(stream);
+                                    break;
+                                default:
+                                    errorFlag = true;
+                                    break;
                             }
+
+                            if (errorFlag)
+                            {
+                                Log.Warning($"An unavailable version has been selected. (VERSION NUMBER : {version})");
+                                return;
+                            }
+
+
+                            // Demodulates the file.
+                            Log.Information($"J2J Demodulator is initialized. (VERSION : Method{o.VersionNumber}, INPUT : {o.Input}, OUTPUT : {o.Output ?? "Auto"})");
+                            _stopwatch.Restart();
+
+                            bool? result = false;
+
+                            if (string.IsNullOrEmpty(o.Password))
+                            {
+                                result = demodulator?.Demodulate(o.Output ?? string.Empty, o.UseForcer);
+                            }
+                            else
+                            {
+                                result = demodulator?.Demodulate(o.Output ?? string.Empty, o.UseForcer, o.Password);
+                            }
+
+                            demodulator?.Dispose();
+
+                            _stopwatch.Stop();
+
+                            string resultString = result == true ? "OK" : "FAILURE";
+                            Log.Information($"Demodulating...{resultString}.({_stopwatch.ElapsedMilliseconds}ms)");
+
+                            _stopwatch.Stop();
                         }
                         catch (Exception ex)
                         {

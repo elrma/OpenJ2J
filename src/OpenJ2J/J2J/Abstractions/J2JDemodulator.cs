@@ -18,13 +18,6 @@ namespace OpenJ2J.J2J.Abstractions
             set => _fileStream = value;
         }
 
-        protected byte[]? _checksum = null;
-
-        public byte[]? Checksum
-        {
-            get => _checksum;
-        }
-
         #endregion
 
         #region ::Constructors::
@@ -38,9 +31,9 @@ namespace OpenJ2J.J2J.Abstractions
 
         #region ::Methods::
 
-        public abstract bool Demodulate(string outputPath);
+        public abstract bool Demodulate(string outputPath, bool useForcer);
 
-        public abstract bool Demodulate(string outputPath, string password);
+        public abstract bool Demodulate(string outputPath, bool useForcer, string password);
 
         #endregion
 
